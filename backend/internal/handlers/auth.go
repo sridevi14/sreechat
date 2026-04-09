@@ -35,7 +35,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	user := &models.User{
 		Username:     req.Username,
-		Email:        req.Email,
 		Phone:        req.Phone,
 		PasswordHash: string(hash),
 	}
@@ -61,7 +60,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.FindByEmail(c.Request.Context(), req.Email)
+	user, err := h.userRepo.FindByPhone(c.Request.Context(), req.Phone)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return

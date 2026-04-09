@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sridhar/sreechat/internal/hub"
@@ -82,7 +83,7 @@ func (r *RedisPubSub) NextSeq(ctx context.Context, roomID string) (int64, error)
 
 func (r *RedisPubSub) SetOnline(ctx context.Context, userID string) error {
 	key := fmt.Sprintf("online:%s", userID)
-	return r.client.Set(ctx, key, "1", 30_000_000_000).Err()
+	return r.client.Set(ctx, key, "1", 35*time.Second).Err()
 }
 
 func (r *RedisPubSub) IsOnline(ctx context.Context, userID string) (bool, error) {

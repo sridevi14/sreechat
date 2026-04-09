@@ -13,7 +13,6 @@ api.interceptors.request.use((config) => {
 export interface User {
   id: string;
   username: string;
-  email: string;
   phone: string;
   avatar: string;
 }
@@ -42,10 +41,10 @@ export interface AuthResponse {
 }
 
 export const authAPI = {
-  register: (username: string, email: string, phone: string, password: string) =>
-    api.post<AuthResponse>("/auth/register", { username, email, phone, password }),
-  login: (email: string, password: string) =>
-    api.post<AuthResponse>("/auth/login", { email, password }),
+  register: (username: string,phone: string, password: string) =>
+    api.post<AuthResponse>("/auth/register", { username, phone, password }),
+  login: (phone: string, password: string) =>
+    api.post<AuthResponse>("/auth/login", { phone, password }),
 };
 
 export const userAPI = {

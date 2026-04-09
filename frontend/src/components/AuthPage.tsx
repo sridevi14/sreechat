@@ -4,7 +4,6 @@ import { useAuthStore } from "../store/authStore";
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,9 +14,9 @@ export default function AuthPage() {
     setError("");
     try {
       if (isLogin) {
-        await login(email, password);
+        await login(phone, password);
       } else {
-        await register(username, email, phone, password);
+        await register(username, phone, password);
       }
     } catch {
       setError(isLogin ? "Invalid credentials" : "Registration failed");
@@ -67,22 +66,15 @@ export default function AuthPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              <input
+            </>
+          )}
+          <input
                 type="tel"
                 placeholder="Phone number (e.g. +1234567890)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-            </>
-          )}
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
           <input
             type="password"
             placeholder="Password"

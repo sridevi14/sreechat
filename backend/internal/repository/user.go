@@ -22,7 +22,6 @@ func NewUserRepo(db *mongo.Database) *UserRepo {
 	defer cancel()
 
 	col.Indexes().CreateMany(ctx, []mongo.IndexModel{
-		{Keys: bson.D{{Key: "email", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "username", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "phone", Value: 1}}, Options: options.Index().SetUnique(true)},
 	})
@@ -40,9 +39,9 @@ func (r *UserRepo) Create(ctx context.Context, user *models.User) error {
 	return nil
 }
 
-func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *UserRepo) FindByPhone(ctx context.Context, phone string) (*models.User, error) {
 	var user models.User
-	err := r.col.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	err := r.col.FindOne(ctx, bson.M{"phone": phone}).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
@@ -70,14 +69,14 @@ func (r *UserRepo) FindByIDs(ctx context.Context, ids []primitive.ObjectID) ([]m
 	return users, nil
 }
 
-func (r *UserRepo) FindByPhone(ctx context.Context, phone string) (*models.User, error) {
-	var user models.User
-	err := r.col.FindOne(ctx, bson.M{"phone": phone}).Decode(&user)
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
+// func (r *UserRepo) FindByPhone(ctx context.Context, phone string) (*models.User, error) {
+// 	var user models.User
+// 	err := r.col.FindOne(ctx, bson.M{"phone": phone}).Decode(&user)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &user, nil
+// }
 
 // SearchByPhone returns users whose phone contains the given substring, excluding the caller.
 func (r *UserRepo) SearchByPhone(ctx context.Context, phone string, excludeID primitive.ObjectID) ([]models.User, error) {
