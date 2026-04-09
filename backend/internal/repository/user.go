@@ -57,6 +57,12 @@ func (r *UserRepo) FindByID(ctx context.Context, id primitive.ObjectID) (*models
 	return &user, nil
 }
 
+// UpdateLastSeen sets last_seen_at for presence when a user disconnects.
+func (r *UserRepo) UpdateLastSeen(ctx context.Context, id primitive.ObjectID, t time.Time) error {
+	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"last_seen_at": t}})
+	return err
+}
+
 func (r *UserRepo) FindByIDs(ctx context.Context, ids []primitive.ObjectID) ([]models.User, error) {
 	cursor, err := r.col.Find(ctx, bson.M{"_id": bson.M{"$in": ids}})
 	if err != nil {

@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
+import { Circle, Clock } from "lucide-react";
 import { useChatStore } from "../store/chatStore";
 import { useAuthStore } from "../store/authStore";
 import { Room, User, userAPI, roomAPI } from "../api/client";
+import { getDirectPeerId, formatLastSeen } from "../utils/presence";
 
 export default function Sidebar() {
-  const { rooms, activeRoom, setActiveRoom, fetchRooms, typingUsers } =
-    useChatStore();
+  const {
+    rooms,
+    activeRoom,
+    setActiveRoom,
+    fetchRooms,
+    typingUsers,
+    presenceByUserId,
+    fetchPresenceForUsers,
+  } = useChatStore();
   const { user, logout } = useAuthStore();
   const [showSearch, setShowSearch] = useState(false);
   const [phoneQuery, setPhoneQuery] = useState("");
@@ -15,6 +24,19 @@ export default function Sidebar() {
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
+
+  useEffect(() => {
+    if (!user) return;
+    const peerIds = rooms
+      .map((r) => getDirectPeerId(r, user.id))
+      .filter((id): id is string => !!id);
+    const unique = [...new Set(peerIds)];
+    if (unique.length === 0) return;
+
+    fetchPresenceForUsers(unique);
+    const t = setInterval(() => fetchPresenceForUsers(unique), 30_000);
+    return () => clearInterval(t);
+  }, [rooms, user, fetchPresenceForUsers]);
 
   const handleSearch = async () => {
     if (!phoneQuery.trim()) return;
@@ -116,6 +138,9 @@ export default function Sidebar() {
       <div className="flex-1 overflow-y-auto">
         {rooms.map((room: Room) => {
           const typing = getRoomTyping(room);
+          const peerId = user ? getDirectPeerId(room, user.id) : null;
+          const p = peerId ? presenceByUserId[peerId] : undefined;
+
           return (
             <button
               key={room.id}
@@ -126,15 +151,37 @@ export default function Sidebar() {
                   : "hover:bg-slate-700/50"
               }`}
             >
-              <p className="text-sm font-medium text-white">{room.name}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium text-white truncate flex-1 min-w-0">
+                  {room.name}
+                </p>
+                {room.type === "direct" && peerId && (
+                  <span
+                    className="shrink-0 mt-0.5"
+                    title={
+                      p?.online
+                        ? "Online"
+                        : formatLastSeen(p?.last_seen_at)
+                    }
+                  >
+                    {p?.online ? (
+                      <Circle className="w-2.5 h-2.5 fill-emerald-400 text-emerald-400" />
+                    ) : (
+                      <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    )}
+                  </span>
+                )}
+              </div>
               {typing.length > 0 ? (
-                <p className="text-xs text-green-400 italic">
+                <p className="text-xs text-green-400 italic mt-0.5">
                   {typing.join(", ")} typing...
                 </p>
               ) : (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   {room.type === "direct"
-                    ? "Direct message"
+                    ? p?.online
+                      ? "Online"
+                      : formatLastSeen(p?.last_seen_at)
                     : `${room.members.length} members`}
                 </p>
               )}

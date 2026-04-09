@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sridhar/sreechat/internal/middleware"
 	"github.com/sridhar/sreechat/internal/models"
+	"github.com/sridhar/sreechat/internal/pubsub"
 	"github.com/sridhar/sreechat/internal/repository"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -14,10 +18,11 @@ import (
 type AuthHandler struct {
 	userRepo  *repository.UserRepo
 	jwtSecret string
+	pubsub    *pubsub.RedisPubSub
 }
 
-func NewAuthHandler(ur *repository.UserRepo, secret string) *AuthHandler {
-	return &AuthHandler{userRepo: ur, jwtSecret: secret}
+func NewAuthHandler(ur *repository.UserRepo, secret string, ps *pubsub.RedisPubSub) *AuthHandler {
+	return &AuthHandler{userRepo: ur, jwtSecret: secret, pubsub: ps}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -100,4 +105,55 @@ func (h *AuthHandler) SearchUsers(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, users)
+}
+
+// GetPresenceBatch returns online/offline and last_seen_at for comma-separated user ids (max 50).
+func (h *AuthHandler) GetPresenceBatch(c *gin.Context) {
+	idsParam := strings.TrimSpace(c.Query("ids"))
+	if idsParam == "" {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
+	parts := strings.Split(idsParam, ",")
+	if len(parts) > 50 {
+		parts = parts[:50]
+	}
+
+	out := make(map[string]gin.H)
+	ctx := c.Request.Context()
+
+	for _, raw := range parts {
+		idStr := strings.TrimSpace(raw)
+		if idStr == "" {
+			continue
+		}
+		oid, err := primitive.ObjectIDFromHex(idStr)
+		if err != nil {
+			continue
+		}
+
+		online, err := h.pubsub.IsOnline(ctx, idStr)
+		if err != nil {
+			log.Printf("presence IsOnline: %v", err)
+		}
+		if online {
+			out[idStr] = gin.H{"online": true}
+			continue
+		}
+
+		user, err := h.userRepo.FindByID(ctx, oid)
+		if err != nil || user == nil {
+			out[idStr] = gin.H{"online": false}
+			continue
+		}
+
+		resp := gin.H{"online": false}
+		if user.LastSeenAt != nil {
+			resp["last_seen_at"] = user.LastSeenAt.UTC().Format(time.RFC3339)
+		}
+		out[idStr] = resp
+	}
+
+	c.JSON(http.StatusOK, out)
 }

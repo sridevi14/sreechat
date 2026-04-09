@@ -13,4 +13,6 @@ type Message struct {
 	Content   string             `json:"content" bson:"content"`
 	Seq       int64              `json:"seq" bson:"seq"`
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+	// Username is populated for API responses only (not stored in MongoDB).
+	Username string `json:"username,omitempty" bson:"-"`
 }

@@ -3,9 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -52,10 +52,8 @@ func (h *WSHandler) HandleWS(c *gin.Context) {
 	claims := token.Claims.(jwt.MapClaims)
 	userID := claims["sub"].(string)
 	username := claims["username"].(string)
-	fmt.Println(userID, username)
 
 	roomID := c.Query("room_id")
-	fmt.Printf("User %s joining room %s\n", userID, roomID)
 	if roomID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing room_id"})
 		return
@@ -110,11 +108,26 @@ func (h *WSHandler) HandleWS(c *gin.Context) {
 	h.pubsub.Subscribe(roomID)
 	h.pubsub.SetOnline(context.Background(), userID)
 
+	onlineMsg := &models.WSMessage{
+		Type:   "presence",
+		RoomID: roomID,
+		Payload: models.PresencePayload{
+			UserID:   userID,
+			Username: username,
+			Online:   true,
+		},
+	}
+	if err := h.pubsub.Publish(context.Background(), roomID, onlineMsg); err != nil {
+		log.Printf("presence online publish: %v", err)
+	}
+
 	go hub.WritePump(client)
 	go h.readPump(client, username)
 }
 
 func (h *WSHandler) readPump(client *hub.Client, username string) {
+	// Leaving this room WebSocket is not "leaving the platform" — global presence is
+	// driven by /api/presence/heartbeat + /api/presence/offline. Only unregister here.
 	defer func() {
 		h.hub.Unregister <- client
 		client.Conn.Close()
@@ -133,9 +146,13 @@ func (h *WSHandler) readPump(client *hub.Client, username string) {
 
 		switch wsMsg.Type {
 		case "message":
+			h.pubsub.SetOnline(context.Background(), client.UserID)
 			h.handleChatMessage(client, username, &wsMsg)
 		case "typing":
+			h.pubsub.SetOnline(context.Background(), client.UserID)
 			h.handleTyping(client, username, &wsMsg)
+		case "heartbeat":
+			h.pubsub.SetOnline(context.Background(), client.UserID)
 		}
 	}
 }
@@ -173,6 +190,7 @@ func (h *WSHandler) handleChatMessage(client *hub.Client, username string, wsMsg
 		SenderID: client.UserID,
 		Username: username,
 		Seq:      seq,
+		CreatedAt: msg.CreatedAt.UTC().Format(time.RFC3339),
 	}
 	outMsg := &models.WSMessage{
 		Type:    "message",

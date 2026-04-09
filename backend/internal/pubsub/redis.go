@@ -91,3 +91,9 @@ func (r *RedisPubSub) IsOnline(ctx context.Context, userID string) (bool, error)
 	n, err := r.client.Exists(ctx, key).Result()
 	return n > 0, err
 }
+
+// ClearOnline removes the online key (e.g. user left the app).
+func (r *RedisPubSub) ClearOnline(ctx context.Context, userID string) error {
+	key := fmt.Sprintf("online:%s", userID)
+	return r.client.Del(ctx, key).Err()
+}

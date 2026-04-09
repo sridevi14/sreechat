@@ -121,6 +121,32 @@ func (h *RoomHandler) GetMessages(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch messages"})
 		return
 	}
+
+	ctx := c.Request.Context()
+	seen := make(map[primitive.ObjectID]struct{})
+	var senderIDs []primitive.ObjectID
+	for _, m := range messages {
+		if _, ok := seen[m.SenderID]; ok {
+			continue
+		}
+		seen[m.SenderID] = struct{}{}
+		senderIDs = append(senderIDs, m.SenderID)
+	}
+	if len(senderIDs) > 0 {
+		users, err := h.userRepo.FindByIDs(ctx, senderIDs)
+		if err == nil {
+			nameByID := make(map[string]string, len(users))
+			for _, u := range users {
+				nameByID[u.ID.Hex()] = u.Username
+			}
+			for i := range messages {
+				if name, ok := nameByID[messages[i].SenderID.Hex()]; ok {
+					messages[i].Username = name
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, messages)
 }
 

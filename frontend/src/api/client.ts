@@ -47,8 +47,24 @@ export const authAPI = {
     api.post<AuthResponse>("/auth/login", { phone, password }),
 };
 
+export interface UserPresence {
+  online: boolean;
+  last_seen_at?: string;
+}
+
 export const userAPI = {
   search: (phone: string) => api.get<User[]>("/users/search", { params: { phone } }),
+  /** Comma-separated user ids (max 50). Returns map id → presence. */
+  presence: (userIds: string[]) =>
+    api.get<Record<string, UserPresence>>("/users/presence", {
+      params: { ids: userIds.join(",") },
+    }),
+};
+
+/** App-wide presence: online while logged in; last seen when tab closes / logout. */
+export const presenceAPI = {
+  heartbeat: () => api.post("/presence/heartbeat"),
+  offline: () => api.post("/presence/offline"),
 };
 
 export const roomAPI = {

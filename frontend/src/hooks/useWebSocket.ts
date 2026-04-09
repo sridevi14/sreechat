@@ -5,7 +5,17 @@ import { Message } from "../api/client";
 interface WSMessage {
   type: string;
   room_id: string;
-  payload: any;
+  payload: {
+    sender_id?: string;
+    username?: string;
+    content?: string;
+    seq?: number;
+    created_at?: string;
+    is_typing?: boolean;
+    user_id?: string;
+    online?: boolean;
+    last_seen_at?: string;
+  };
 }
 
 export function useWebSocket(roomId: string | null, token: string | null) {
@@ -15,6 +25,7 @@ export function useWebSocket(roomId: string | null, token: string | null) {
   const isTyping = useRef(false);
   const addMessage = useChatStore((s) => s.addMessage);
   const setTyping = useChatStore((s) => s.setTyping);
+  const setPresence = useChatStore((s) => s.setPresence);
   const fetchRooms = useChatStore((s) => s.fetchRooms);
 
   const connect = useCallback(() => {
@@ -25,10 +36,6 @@ export function useWebSocket(roomId: string | null, token: string | null) {
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      console.log(`WS connected to room ${roomId}`);
-    };
-
     ws.onmessage = (event) => {
       const data: WSMessage = JSON.parse(event.data);
       switch (data.type) {
@@ -36,10 +43,10 @@ export function useWebSocket(roomId: string | null, token: string | null) {
           const msg: Message = {
             id: "",
             room_id: data.room_id,
-            sender_id: data.payload.sender_id,
-            content: data.payload.content,
-            seq: data.payload.seq,
-            created_at: new Date().toISOString(),
+            sender_id: data.payload.sender_id!,
+            content: data.payload.content!,
+            seq: data.payload.seq!,
+            created_at: data.payload.created_at || new Date().toISOString(),
             username: data.payload.username || "",
           };
           addMessage(data.room_id, msg);
@@ -49,41 +56,48 @@ export function useWebSocket(roomId: string | null, token: string | null) {
         case "typing":
           setTyping(
             data.room_id,
-            data.payload.username,
-            data.payload.is_typing
+            data.payload.username!,
+            data.payload.is_typing!
           );
           break;
+        case "presence": {
+          const uid = data.payload.user_id;
+          if (!uid) break;
+          setPresence(uid, {
+            online: !!data.payload.online,
+            last_seen_at: data.payload.last_seen_at,
+          });
+          break;
+        }
       }
     };
 
     ws.onclose = () => {
-      console.log("WS disconnected, reconnecting in 2s...");
       reconnectTimer.current = setTimeout(connect, 2000);
     };
 
-    ws.onerror = (err) => {
-      console.error("WS error:", err);
+    ws.onerror = () => {
       ws.close();
     };
-  }, [roomId, token, addMessage, setTyping, fetchRooms]);
+  }, [roomId, token, addMessage, setTyping, setPresence, fetchRooms]);
 
   useEffect(() => {
     connect();
     return () => {
       clearTimeout(reconnectTimer.current);
       clearTimeout(typingTimeout.current);
-      if (isTyping.current) {
-        sendRaw({ type: "typing", room_id: roomId || "", payload: { is_typing: false } });
+      if (isTyping.current && wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "typing",
+            room_id: roomId || "",
+            payload: { is_typing: false },
+          })
+        );
       }
       wsRef.current?.close();
     };
-  }, [connect]);
-
-  const sendRaw = (msg: WSMessage) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(msg));
-    }
-  };
+  }, [connect, roomId]);
 
   const sendMessage = useCallback(
     (content: string) => {

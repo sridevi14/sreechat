@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { authAPI, User } from "../api/client";
+import { authAPI, presenceAPI, User } from "../api/client";
 
 interface AuthState {
   user: User | null;
@@ -34,7 +34,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: data.user, token: data.token, isAuthenticated: true });
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await presenceAPI.offline();
+    } catch {
+      /* still sign out locally */
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     set({ user: null, token: null, isAuthenticated: false });

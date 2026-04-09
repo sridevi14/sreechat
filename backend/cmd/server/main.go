@@ -52,8 +52,9 @@ func main() {
 
 	ps := pubsub.NewRedisPubSub(rdb, wsHub)
 
-	authHandler := handlers.NewAuthHandler(userRepo, cfg.JWTSecret)
+	authHandler := handlers.NewAuthHandler(userRepo, cfg.JWTSecret, ps)
 	roomHandler := handlers.NewRoomHandler(roomRepo, msgRepo, userRepo)
+	presenceHandler := handlers.NewPresenceHandler(userRepo, roomRepo, ps)
 	wsHandler := handlers.NewWSHandler(wsHub, ps, msgRepo, roomRepo, cfg.JWTSecret)
 
 	r := gin.Default()
@@ -77,6 +78,9 @@ func main() {
 		protected.Use(mw.JWTAuth(cfg.JWTSecret))
 		{
 			protected.GET("/users/search", authHandler.SearchUsers)
+			protected.GET("/users/presence", authHandler.GetPresenceBatch)
+			protected.POST("/presence/heartbeat", presenceHandler.Heartbeat)
+			protected.POST("/presence/offline", presenceHandler.Offline)
 			protected.GET("/rooms", roomHandler.GetRooms)
 			protected.POST("/rooms", roomHandler.CreateRoom)
 			protected.POST("/rooms/direct", roomHandler.StartDirectChat)

@@ -1,8 +1,16 @@
 import { useEffect, useRef } from "react";
+import { Circle, Clock, Users } from "lucide-react";
 import { useChatStore } from "../store/chatStore";
 import { useAuthStore } from "../store/authStore";
 import { useWebSocket } from "../hooks/useWebSocket";
+import { getDirectPeerId, formatLastSeen } from "../utils/presence";
 import MessageInput from "./MessageInput";
+
+function formatMessageTime(iso: string) {
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return "";
+  return dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
 
 export default function ChatWindow() {
   const activeRoom = useChatStore((s) => s.activeRoom);
@@ -10,9 +18,11 @@ export default function ChatWindow() {
     activeRoom ? s.messages[activeRoom.id] || [] : []
   );
   const typingUsers = useChatStore((s) =>
-    activeRoom ? (s.typingUsers[activeRoom.id] || []) : []
+    activeRoom ? s.typingUsers[activeRoom.id] || [] : []
   );
+  const presenceByUserId = useChatStore((s) => s.presenceByUserId);
   const fetchMessages = useChatStore((s) => s.fetchMessages);
+  const fetchPresenceForUsers = useChatStore((s) => s.fetchPresenceForUsers);
   const { user, token } = useAuthStore();
   const { sendMessage, sendTyping } = useWebSocket(
     activeRoom?.id || null,
@@ -21,12 +31,21 @@ export default function ChatWindow() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const othersTyping = typingUsers.filter((u) => u !== user?.username);
+  const peerId =
+    activeRoom && user ? getDirectPeerId(activeRoom, user.id) : null;
+  const peerPresence = peerId ? presenceByUserId[peerId] : undefined;
 
   useEffect(() => {
     if (activeRoom) {
       fetchMessages(activeRoom.id);
     }
   }, [activeRoom, fetchMessages]);
+
+  useEffect(() => {
+    if (peerId) {
+      fetchPresenceForUsers([peerId]);
+    }
+  }, [peerId, fetchPresenceForUsers]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,28 +67,63 @@ export default function ChatWindow() {
     );
   }
 
+  const initial = activeRoom.name.trim().charAt(0).toUpperCase() || "?";
+
+  const subtitle = () => {
+    if (othersTyping.length > 0) {
+      return (
+        <span className="text-green-400 italic">
+          {othersTyping.join(", ")} typing...
+        </span>
+      );
+    }
+    if (activeRoom.type === "group") {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-slate-400">
+          <Users className="w-3.5 h-3.5 shrink-0" aria-hidden />
+          {activeRoom.members.length} members
+        </span>
+      );
+    }
+    if (peerPresence?.online) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-emerald-400/90">
+          <Circle className="w-2.5 h-2.5 fill-current shrink-0" aria-hidden />
+          online
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 text-slate-400">
+        <Clock className="w-3.5 h-3.5 shrink-0 opacity-80" aria-hidden />
+        {formatLastSeen(peerPresence?.last_seen_at)}
+      </span>
+    );
+  };
+
+  const statusBadge =
+    activeRoom.type === "direct" && peerPresence?.online ? (
+      <span
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-sm font-semibold text-white ring-2 ring-emerald-500/80"
+        title="Online"
+      >
+        {initial}
+      </span>
+    ) : (
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-sm font-semibold text-white ring-2 ring-slate-600">
+        {initial}
+      </span>
+    );
+
   return (
     <div className="flex-1 flex flex-col bg-slate-900">
-      <div className="px-6 py-4 bg-slate-800 border-b border-slate-700 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-white">
+      <div className="px-6 py-4 bg-slate-800 border-b border-slate-700 flex items-center gap-4">
+        {statusBadge}
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold text-white truncate">
             {activeRoom.name}
           </h2>
-          <p className="text-xs text-slate-400">
-            {othersTyping.length > 0 ? (
-              <span className="text-green-400 italic">
-                {othersTyping.join(", ")} typing...
-              </span>
-            ) : activeRoom.type === "direct" ? (
-              "Direct message"
-            ) : (
-              `${activeRoom.members.length} members`
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-          <span className="text-xs text-slate-400">Online</span>
+          <p className="text-xs mt-0.5">{subtitle()}</p>
         </div>
       </div>
 
@@ -94,13 +148,13 @@ export default function ChatWindow() {
                   </p>
                 )}
                 <p className="text-sm leading-relaxed">{msg.content}</p>
-                {/* <p
-                  className={`text-[10px] mt-1 ${
-                    isOwn ? "text-indigo-200" : "text-slate-500"
+                <p
+                  className={`text-[10px] mt-1 text-right ${
+                    isOwn ? "text-indigo-200/90" : "text-slate-400"
                   }`}
                 >
-                  seq:{msg.seq}
-                </p> */}
+                  {formatMessageTime(msg.created_at)}
+                </p>
               </div>
             </div>
           );

@@ -1,11 +1,13 @@
 import { create } from "zustand";
-import { Room, Message, roomAPI } from "../api/client";
+import { Room, Message, roomAPI, userAPI, UserPresence } from "../api/client";
 
 interface ChatState {
   rooms: Room[];
   activeRoom: Room | null;
   messages: Record<string, Message[]>;
   typingUsers: Record<string, string[]>;
+  /** user id → presence (from REST + WebSocket). */
+  presenceByUserId: Record<string, UserPresence>;
 
   setRooms: (rooms: Room[]) => void;
   setActiveRoom: (room: Room | null) => void;
@@ -13,6 +15,9 @@ interface ChatState {
   fetchMessages: (roomId: string, afterSeq?: number) => Promise<void>;
   addMessage: (roomId: string, message: Message) => void;
   setTyping: (roomId: string, username: string, isTyping: boolean) => void;
+  setPresence: (userId: string, p: UserPresence) => void;
+  mergePresence: (map: Record<string, UserPresence>) => void;
+  fetchPresenceForUsers: (userIds: string[]) => Promise<void>;
 }
 
 const typingTimers: Record<string, ReturnType<typeof setTimeout>> = {};
@@ -22,6 +27,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   activeRoom: null,
   messages: {},
   typingUsers: {},
+  presenceByUserId: {},
 
   setRooms: (rooms) => set({ rooms }),
   setActiveRoom: (room) => set({ activeRoom: room }),
@@ -106,6 +112,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
           [roomId]: current.filter((u) => u !== username),
         },
       });
+    }
+  },
+
+  setPresence: (userId, p) =>
+    set({
+      presenceByUserId: { ...get().presenceByUserId, [userId]: p },
+    }),
+
+  mergePresence: (map) =>
+    set({
+      presenceByUserId: { ...get().presenceByUserId, ...map },
+    }),
+
+  fetchPresenceForUsers: async (userIds) => {
+    const unique = [...new Set(userIds)].filter(Boolean);
+    if (unique.length === 0) return;
+    try {
+      const { data } = await userAPI.presence(unique);
+      if (data && typeof data === "object") {
+        get().mergePresence(data as Record<string, UserPresence>);
+      }
+    } catch {
+      // ignore
     }
   },
 }));
