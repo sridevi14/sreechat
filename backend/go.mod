@@ -1,4 +1,4 @@
-module github.com/sridhar/sreechat
+module github.com/sreechat
 
 go 1.22
 

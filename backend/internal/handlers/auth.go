@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sridhar/sreechat/internal/middleware"
-	"github.com/sridhar/sreechat/internal/models"
-	"github.com/sridhar/sreechat/internal/pubsub"
-	"github.com/sridhar/sreechat/internal/repository"
+	"github.com/sreechat/internal/middleware"
+	"github.com/sreechat/internal/models"
+	"github.com/sreechat/internal/pubsub"
+	"github.com/sreechat/internal/repository"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )

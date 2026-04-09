@@ -10,10 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
-	"github.com/sridhar/sreechat/internal/hub"
-	"github.com/sridhar/sreechat/internal/models"
-	"github.com/sridhar/sreechat/internal/pubsub"
-	"github.com/sridhar/sreechat/internal/repository"
+	"github.com/sreechat/internal/hub"
+	"github.com/sreechat/internal/models"
+	"github.com/sreechat/internal/pubsub"
+	"github.com/sreechat/internal/repository"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -186,10 +186,10 @@ func (h *WSHandler) handleChatMessage(client *hub.Client, username string, wsMsg
 	}
 
 	outPayload := models.ChatPayload{
-		Content:  chatPayload.Content,
-		SenderID: client.UserID,
-		Username: username,
-		Seq:      seq,
+		Content:   chatPayload.Content,
+		SenderID:  client.UserID,
+		Username:  username,
+		Seq:       seq,
 		CreatedAt: msg.CreatedAt.UTC().Format(time.RFC3339),
 	}
 	outMsg := &models.WSMessage{

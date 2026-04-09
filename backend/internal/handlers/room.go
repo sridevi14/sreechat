@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sridhar/sreechat/internal/models"
-	"github.com/sridhar/sreechat/internal/repository"
+	"github.com/sreechat/internal/models"
+	"github.com/sreechat/internal/repository"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )

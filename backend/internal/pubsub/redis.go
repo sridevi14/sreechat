@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/sridhar/sreechat/internal/hub"
-	"github.com/sridhar/sreechat/internal/models"
+	"github.com/sreechat/internal/hub"
+	"github.com/sreechat/internal/models"
 )
 
 type RedisPubSub struct {

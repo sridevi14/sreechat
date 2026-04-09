@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/sridhar/sreechat/internal/models"
+	"github.com/sreechat/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

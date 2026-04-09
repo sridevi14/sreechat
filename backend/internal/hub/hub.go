@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"github.com/sridhar/sreechat/internal/models"
+	"github.com/sreechat/internal/models"
 )
 
 type Client struct {
