@@ -32,7 +32,9 @@ export function useWebSocket(roomId: string | null, token: string | null) {
     if (!roomId || !token) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${protocol}//${window.location.host}/ws?token=${token}&room_id=${roomId}`;
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const host = apiUrl ? new URL(apiUrl).host : window.location.host;
+    const url = `${protocol}//${host}/ws?token=${token}&room_id=${roomId}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
