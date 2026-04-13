@@ -14,25 +14,17 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     restart: unless-stopped
+    volumes:
+      - redis_data:/data
 
   mongo:
     image: mongo:7
-    ports:
-      - "27017:27017"
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
 
-  # frontend:
-  #   build: ./frontend
-  #   ports:
-  #     - "3000:80"
-  #   depends_on:
-  #     - api
-  #   restart: unless-stopped
 
 volumes:
   mongo_data:
+  redis_data:
