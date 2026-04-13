@@ -66,6 +66,14 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "🚀 SreeChat API is running",
+			"status":  "ok",
+			"time":    time.Now().Format(time.RFC3339),
+		})
+	})
+
 	api := r.Group("/api")
 	{
 		auth := api.Group("/auth")
